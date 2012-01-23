@@ -18,3 +18,5 @@ ReplicatorG.app
 .project
 *.diff
 .DS_Store
+scripts/secrets.sh
+
