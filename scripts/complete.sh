@@ -19,7 +19,7 @@ sleep 3
 echo "Processing video"
 ffmpeg -i "$TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO" -r 1 -f image2 /tmp/output-%06d.jpg
 ffmpeg -r 30 -i /tmp/output-%06d.jpg -sameq -vcodec libx264 -threads 0 -an "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO"
-rm /tmp/output-*.jpg
+find /tmp/ -name "*.jpg" -exec rm {} \;
 
 echo "Uploading to YouTube"
 YOUTUBE_LINK=`youtube-upload --email=$YOUTUBE_EMAIL --password=$YOUTUBE_PASSWORD --title="$FILE_NAME" --category="Tech" --keywords=yelp,makerbot,timelapse --description="Made with Yelp's Makerbot" "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO" --wait-processing`
