@@ -12,7 +12,7 @@ ORIGINAL_VIDEO=$FILE_NAME.m4v
 
 if [ $TIME_ELAPSED -lt $MINIMUM_VIDEO_TIME ]; then
 	echo "Build was not long enough to be interesting, aborting video capture."
-	osascript scripts/abort_recording.scpt "$ORIGINAL_VIDEO"
+	osascript "$SCRIPT_DIR"/abort_recording.scpt "$ORIGINAL_VIDEO"
 	exit
 fi
 
