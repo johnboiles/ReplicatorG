@@ -1,3 +1,6 @@
 #!/bin/bash
-sleep 90
-osascript scripts/start_recording.scpt "$1.m4v"
+# PWD here is the replicator directory
+
+FILE_PATH=$1
+
+./scripts/youtube_tweeter/start.sh $FILE_PATH
