@@ -24,7 +24,7 @@ echo "Uploading to YouTube"
 YOUTUBE_DESCRIPTION="Made with Yelp's Makerbot in $TIME_ELAPSED_STRING"
 YOUTUBE_KEYWORDS="yelp,makerbot,timelapse"
 YOUTUBE_CATEGORY="Tech"
-YOUTUBE_UPLOAD_COMMAND='youtube-upload --email=$YOUTUBE_EMAIL --password=$YOUTUBE_PASSWORD --title="$FILE_NAME" --category="$YOUTUBE_CATEGORY" --keywords="$YOUTUBE_KEYWORDS" --description="$YOUTUBE_DESCRIPTION" "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO" --wait-processing'
+YOUTUBE_UPLOAD_COMMAND="youtube-upload --email=$YOUTUBE_EMAIL --password=$YOUTUBE_PASSWORD --title="$FILE_NAME" --category="$YOUTUBE_CATEGORY" --keywords="$YOUTUBE_KEYWORDS" --description="$YOUTUBE_DESCRIPTION" "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO" --wait-processing"
 echo "$YOUTUBE_UPLOAD_COMMAND"
 YOUTUBE_LINK=`$YOUTUBE_UPLOAD_COMMAND`
 echo $YOUTUBE_LINK
