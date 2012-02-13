@@ -15,10 +15,14 @@ echo "Stopping recording"
 osascript "$SCRIPT_DIR"/finish_recording.scpt "$ORIGINAL_VIDEO"
 sleep 3
 
+# TODO: Check if the video file exists before trying to speed up and reencode
+
 echo "Processing video"
 ffmpeg -i "$TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO" -r 1 -f image2 "$TMP_VIDEO_DIRECTORY"/output-%06d.jpg
 ffmpeg -r 30 -i "$TMP_VIDEO_DIRECTORY"/output-%06d.jpg -sameq -vcodec libx264 -threads 0 -an "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO"
-find "$TMP_VIDEO_DIRECTORY"/ -name "*.jpg" -exec rm {} \;
+find "$TMP_VIDEO_DIRECTORY"/ -name "output-*.jpg" -exec rm {} \;
+
+# TODO: Check if the video file exists before trying to upload to youtube
 
 echo "Uploading to YouTube"
 YOUTUBE_DESCRIPTION="Made with Yelp's Makerbot in $TIME_ELAPSED_STRING"
