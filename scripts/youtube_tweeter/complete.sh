@@ -12,7 +12,7 @@ ORIGINAL_VIDEO=$FILE_NAME.m4v
 PROCESSED_VIDEO=$FILE_NAME-processed.m4v
 
 echo "Stopping recording"
-osascript "$SCRIPT_DIR"/finish_recording.scpt "$TMP_VIDEO_DIRECTORY" "$ORIGINAL_VIDEO"
+osascript "$SCRIPT_DIR"/finish_recording.scpt "$TMP_VIDEO_DIRECTORY/" "$ORIGINAL_VIDEO"
 sleep 3
 
 if [ ! -e "$TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO" ]; then
