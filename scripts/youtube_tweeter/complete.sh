@@ -12,19 +12,25 @@ ORIGINAL_VIDEO=$FILE_NAME.m4v
 PROCESSED_VIDEO=$FILE_NAME-processed.m4v
 
 echo "Stopping recording"
-osascript "$SCRIPT_DIR"/finish_recording.scpt "$ORIGINAL_VIDEO"
+osascript "$SCRIPT_DIR"/finish_recording.scpt "$TMP_VIDEO_DIRECTORY" "$ORIGINAL_VIDEO"
 sleep 3
 
-# TODO: Check if the video file exists before trying to speed up and reencode
+if [ ! -e "$TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO" ]; then
+	echo "Couldn't find original video at path $TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO"
+	exit 1
+fi
 
 echo "Processing video"
 ffmpeg -i "$TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO" -r 1 -f image2 "$TMP_VIDEO_DIRECTORY"/output-%06d.jpg
 ffmpeg -r 30 -i "$TMP_VIDEO_DIRECTORY"/output-%06d.jpg -sameq -vcodec libx264 -threads 0 -an "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO"
 find "$TMP_VIDEO_DIRECTORY"/ -name "output-*.jpg" -exec rm {} \;
 
-# TODO: Check if the video file exists before trying to upload to youtube
+if [ ! -e "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO" ]; then
+	echo "Couldn't find processed video at path $TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO"
+	exit 1
+fi
 
-echo "Uploading to YouTube"
+echo "Uploading to YouTube..."
 YOUTUBE_DESCRIPTION="Made with Yelp's Makerbot in $TIME_ELAPSED_STRING"
 YOUTUBE_KEYWORDS="yelp,makerbot,timelapse"
 YOUTUBE_CATEGORY="Tech"
@@ -33,12 +39,15 @@ echo "$YOUTUBE_UPLOAD_COMMAND"
 YOUTUBE_LINK=`$YOUTUBE_UPLOAD_COMMAND`
 echo $YOUTUBE_LINK
 
-if [ $YOUTUBE_LINK ]; then
-	echo "Removing temporary video files"
-	rm "$TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO"
-	rm "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO"
-
-	TWITTER_STATUS="I just printed $FILE_NAME in $TIME_ELAPSED_STRING: $YOUTUBE_LINK"
-	echo "Tweeting: $TWITTER_STATUS"
-	"$SCRIPT_DIR"/tweeter.py --tweet "$TWITTER_STATUS" --consumerkey $TWITTER_CONSUMER_KEY --consumersecret $TWITTER_CONSUMER_SECRET --accesskey $TWITTER_ACCESS_KEY --accesssecret $TWITTER_ACCESS_SECRET
+if [ ! $YOUTUBE_LINK ]; then
+	echo "YouTube link was not successfully generated"
+	exit 1
 fi
+
+echo "Removing temporary video files"
+rm "$TMP_VIDEO_DIRECTORY/$ORIGINAL_VIDEO"
+rm "$TMP_VIDEO_DIRECTORY/$PROCESSED_VIDEO"
+
+TWITTER_STATUS="I just printed $FILE_NAME in $TIME_ELAPSED_STRING: $YOUTUBE_LINK"
+echo "Tweeting: $TWITTER_STATUS"
+"$SCRIPT_DIR"/tweeter.py --tweet "$TWITTER_STATUS" --consumerkey $TWITTER_CONSUMER_KEY --consumersecret $TWITTER_CONSUMER_SECRET --accesskey $TWITTER_ACCESS_KEY --accesssecret $TWITTER_ACCESS_SECRET
