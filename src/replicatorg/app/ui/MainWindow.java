@@ -2134,7 +2134,7 @@ ToolpathGenerator.GeneratorListener
 //				setEditorBusy(false);
 //				building = false;
 //			}
-			maybeRunScript("scripts/start.sh", handleOpenPath, String.valueOf(buildStart.getTime()));
+			maybeRunScript("start.sh", handleOpenPath, String.valueOf(buildStart.getTime()));
 		}
 	}
 
@@ -2460,7 +2460,7 @@ ToolpathGenerator.GeneratorListener
 		String time_string = EstimationDriver.getBuildTimeString(elapsed);
 		String message = "Build finished.\n\nCompleted in "	+ time_string;
 
-		maybeRunScript("scripts/complete.sh", handleOpenPath, String.valueOf(elapsed / 1000), time_string);
+		maybeRunScript("complete.sh", handleOpenPath, String.valueOf(elapsed / 1000), time_string);
 
 		Base.showMessage("Build finished", message);
 	}
@@ -2534,7 +2534,7 @@ ToolpathGenerator.GeneratorListener
 		Date finished = new Date();
 		long elapsed = finished.getTime() - started.getTime();
 		String time_string = EstimationDriver.getBuildTimeString(elapsed);
-		maybeRunScript("scripts/stop.sh", handleOpenPath,  String.valueOf(elapsed / 1000), time_string);
+		maybeRunScript("stop.sh", handleOpenPath,  String.valueOf(elapsed / 1000), time_string);
 	}
 
 	class EstimationThread extends Thread {
@@ -3386,7 +3386,7 @@ ToolpathGenerator.GeneratorListener
 		// Run a shell script if possible. Fail silently.
 		try {
 			List<String> command = new LinkedList<String>();
-			command.add(path);
+			command.add(Base.getApplicationFile("scripts") + "/" + path);
 			for (int i = 0; i < arguments.length; i++)
 				command.add(arguments[i]);
 			ProcessBuilder pb = new ProcessBuilder(command);
