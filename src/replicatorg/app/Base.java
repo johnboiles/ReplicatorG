@@ -77,7 +77,10 @@ import javax.swing.UIManager;
 
 import replicatorg.app.ui.MainWindow;
 import replicatorg.app.ui.NotificationHandler;
+import replicatorg.drivers.DriverQueryInterface;
 import replicatorg.machine.MachineLoader;
+import replicatorg.machine.MachineInterface;
+import replicatorg.machine.model.MachineType;
 import replicatorg.uploader.FirmwareUploader;
 import ch.randelshofer.quaqua.QuaquaManager;
 
@@ -99,12 +102,12 @@ public class Base {
 	/**
 	 * The version number of this edition of replicatorG.
 	 */
-	public static final int VERSION = 33;
+	public static final int VERSION = 37;
 	
 	/**
 	 * The textual representation of this version (4 digits, zero padded).
 	 */
-	public static final String VERSION_NAME = String.format("%04d",VERSION);
+	public static final String VERSION_NAME = String.format("%04d-Beta",VERSION);
 
 	/**
 	 * The machine controller in use.
@@ -193,7 +196,20 @@ public class Base {
 	 * set.
 	 */
 	static private String alternatePrefs = null;
-	
+
+	/**
+	 * Set the name of the alternate preferences to use. This will reload
+	 * the preferences. It must be called only from the main method before
+	 * any preference values are used.
+	 *
+	 * @param name the alternate preferences name.
+	 */
+	public static void setAlternatePrefs(final String name)
+	{
+		alternatePrefs = name;
+		preferences = getUserPreferences();
+	}
+
 	/**
 	 * Get the preferences node for ReplicatorG.
 	 */
@@ -208,7 +224,7 @@ public class Base {
 	static private void moveAll(File source, File target) {
 		try {
 			if (source.isDirectory()) {
-				if (!target.exists()) {
+				if (!target.exists() ) {
 					target.mkdir();
 				}
 				for (String s : source.list()) {
@@ -223,7 +239,7 @@ public class Base {
 			Base.logger.severe(e.getMessage());
 		}
 	}
-	
+		
 	/**
 	 * Reset the preferences for ReplicatorG to a clean state.
 	 */
@@ -254,8 +270,8 @@ public class Base {
 	static public String getToolsPath() {
 	    String toolsDir = System.getProperty("replicatorg.toolpath");
 	    if (toolsDir == null || (toolsDir.length() == 0)) {
-		    String path = System.getProperty("user.dir");
-	    	toolsDir = path + File.separator + "tools";
+		    File appDir = Base.getApplicationDirectory();
+	    	toolsDir = appDir.getAbsolutePath() + File.separator + "tools";
 	    }
 	    return toolsDir;
 	}
@@ -271,7 +287,12 @@ public class Base {
 		File dir = new File(path);
 		if (!dir.exists()) {
 			dir.mkdirs();
+			if( ! dir.exists() )  { // we failed to create our user dir. Log the failure, try to continue
+				Base.logger.severe("We could not create a user directory at: "+ path );
+				return null; 
+			}
 		}
+
 		return dir;
 	}
 	
@@ -291,7 +312,8 @@ public class Base {
 				if(new File(baseDir + "/ReplicatorG.app/Contents/Resources").exists())
 					return new File(baseDir + "/ReplicatorG.app/Contents/Resources");
 				else
-					return new File(baseDir);
+					Base.logger.severe(baseDir + "/ReplicatorG.app not found, using " + baseDir + "/replicatorg/");
+					return new File(baseDir + "/replicatorg");
 				}
 			catch (java.io.IOException e) {
 				// This space intentionally left blank. Fall through.
@@ -308,6 +330,9 @@ public class Base {
 		return getUserFile(path,true);
 	}
 
+	static public File getUserDir(String path) {
+		return getUserDir(path,true);
+	}
 	
 	/**
 	 * Singleton NumberFormat used for parsing and displaying numbers to GUI in the 
@@ -364,6 +389,32 @@ public class Base {
 		return f;
 	}
 
+	static public File getUserDir(String path, boolean autoCopy) {
+		if (path.contains("..")) {
+			Base.logger.info("Attempted to access parent directory in "+path+", skipping");
+			return null;
+		}
+		// First look in the user's local .replicatorG directory for the path.
+		File f = new File(getUserDirectory(),path);
+		// Make the parent file if not already there
+		File dir = f.getParentFile();
+		if (!dir.exists()) { dir.mkdirs(); }
+		if (autoCopy && !f.exists()) {
+			// Check if there's an application-level version
+			File original = getApplicationFile(path);
+			// If so, copy it over
+			if (original.exists()) {
+				try {
+					Base.copyDir(original,f);
+				} catch (IOException ioe) {
+					Base.logger.log(Level.SEVERE,"Couldn't copy "+path+" to your local .replicatorG directory",f);
+				}
+			}
+		}
+		return f;
+	}
+
+	
 	static public Font getFontPref(String name, String defaultValue) {
 		String s = preferences.get(name,defaultValue);
 		StringTokenizer st = new StringTokenizer(s, ",");
@@ -448,7 +499,7 @@ public class Base {
 			if (args[i].equals("--alternate-prefs")) {
 				if((i+1) < args.length) {
 					i++;
-					alternatePrefs = args[i];
+					setAlternatePrefs(args[i]);
 				}
 			} else if (args[i].equals("--clean-prefs")) {
 				cleanPrefs = true;
@@ -486,6 +537,7 @@ public class Base {
 			}
 		}
 		
+
 		// Use the default system proxy settings
 		System.setProperty("java.net.useSystemProxies", "true");
     	// Use antialiasing implicitly
@@ -633,10 +685,15 @@ public class Base {
 		}
 	}
 
+	/** enum for fast/easy OS checking */
 	public enum Platform {
 		WINDOWS, MACOS9, MACOSX, LINUX, OTHER
 	}
-
+	/** enum for fast/easy arch checking */
+	public enum Arch {
+		x86_64, x86, ARM, PPC, OTHER
+	}
+	
 	/**
 	 * Full name of the Java version (i.e. 1.5.0_11). Prior to 0125, this was
 	 * only the first three digits.
@@ -655,11 +712,14 @@ public class Base {
 	 * the preproc.
 	 */
 	public static final float javaVersion = new Float(javaVersionName.substring(0, 3)).floatValue();
+
 	/**
 	 * Current platform in use
 	 */
 	static public Platform platform;
 
+	static public Arch arch; 
+	
 	/**
 	 * Current platform in use.
 	 * <P>
@@ -692,6 +752,18 @@ public class Base {
 			} else {
 				platform = Platform.OTHER;
 			}
+			String aString = System.getProperty("os.arch");
+			if("i386".equals(aString)) 
+				arch = Arch.x86;
+			else if("x86_64".equals(aString) || "amd64".equals(aString) )
+				arch =  Arch.x86_64;
+			else if("universal".equals(aString) || "ppc".equals(aString)) {
+				arch = Arch.OTHER;
+				throw new RuntimeException("Can not use use arch: '" + arch + "'");
+			}
+			
+
+			
 		}
 	}
 
@@ -719,6 +791,13 @@ public class Base {
 		return platform == Platform.LINUX;
 	}
 
+	static public boolean isx86_64(){
+		return arch == Arch.x86_64;
+	}
+	static public boolean isx86(){
+		return arch == Arch.x86;
+	}
+	
 	/**
 	 * Registers key events for a Ctrl-W and ESC with an ActionListener that
 	 * will take care of disposing the window.
@@ -938,8 +1017,8 @@ public class Base {
 	}
 
 	static public String getContents(String what) {
-		String basePath = System.getProperty("user.dir");
-		return basePath + File.separator + what;
+		File appBase = 	Base.getApplicationDirectory();
+		return appBase.getAbsolutePath() + File.separator + what;
 	}
 
 	static public String getLibContents(String what) {
@@ -1137,5 +1216,23 @@ public class Base {
 			machineLoader = new MachineLoader();
 		}
 		return machineLoader;
+	}
+
+
+	
+
+	/// Checks global stautus and bot settings to find out if there 
+	/// is a bot specific setting for this key 
+	static public String findDefaultByGlobalStatus(String valueKey, String defaultValue)
+	{
+		MachineInterface mi = getMachineLoader().getMachineInterface();
+		DriverQueryInterface qi = mi.getDriverQueryInterface();
+	
+		// 1) if we are attached, get machine specific value(s)
+		if( mi.isConnected()) { 
+			//Base.logger.severe("situationBestFet fetching from qi");
+			return qi.getConfigValue(valueKey, defaultValue);
+		}
+		return defaultValue;
 	}
 }

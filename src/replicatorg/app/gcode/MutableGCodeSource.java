@@ -125,17 +125,17 @@ public class MutableGCodeSource implements GCodeSource {
 		}
 	}
 	
-	/**
-	 * This looks for and tries to remove sections that match what we expect from the start and end code
-	 * It is not guaranteed to remove start and end code, just to try its best.
-	 * @param source
-	 * @return
-	 */
-	public void stripStartEndBestEffort() {
-		//TODO: try harder
-		Base.logger.finer("stripStartEndBestEffort ToDo: TryHarder" );
-		return;
-	}
+//	/**
+//	 * This looks for and tries to remove sections that match what we expect from the start and end code
+//	 * It is not guaranteed to remove start and end code, just to try its best.
+//	 * @param source
+//	 * @return
+//	 */
+//	public void stripStartEndBestEffort() {
+//		//TODO: try harder
+//		Base.logger.finer("stripStartEndBestEffort ToDo: TryHarder" );
+//		return;
+//	}
 	
 
 	/// Runs through this gcode file, swapping all references to the the current toolhead 
@@ -176,13 +176,13 @@ public class MutableGCodeSource implements GCodeSource {
 		source = newSource;
 	}
 	
-	/// adds any safety stuff that's needed after all other steps have been taken
-	/// atm. it just turns off any unused extruder
-	public void addSafetyMeasures(boolean isDualHead)
-	{
-		if(!isDualHead)
-			return;
-		
+	/**
+	 * If only one toolhead is used, a cool command for the unused head is added
+	 * to this gcode source object.  Created to avoid smell/problems for single prints on a dual machine
+	 * when prior build was cancelled, or a toolhead is left hot from pre-heating. 
+	 */
+	public void coolUnusedToolhead()
+	{		
 		GCodeCommand gcode;
 		String line;
 
@@ -200,10 +200,8 @@ public class MutableGCodeSource implements GCodeSource {
 			
 			tval = gcode.getCodeValue('T');
 			
-			if(tval == 0)
-				seenT0 = true;
-			if(tval == 1)
-				seenT1 = true;
+			if(tval == 0)	seenT0 = true;
+			if(tval == 1)	seenT1 = true;
 			
 			if(!addPointFound)
 				additionPoint++;
@@ -221,6 +219,37 @@ public class MutableGCodeSource implements GCodeSource {
 			add(additionPoint, "M104 T0 S0");
 		
 	}
+	/// Scans gcode for layer start/ends. Adds gcode for approx % done 
+	/// by that layer via using line count
+	public void addSlic3rProgressUpdates()
+	{
+		int index = 0;
+		int sourceSize = source.size();
+		ArrayList<String> newSource = new ArrayList<String>();
+		/// TRICKY: M73 P0 is required by The Replicator to enable % display
+		// and M73 P100. is required at the end. These are in TheReplicator start.gcode
+		// and end.gcode.  P0 and P100 are flags to send the build_start and build_end  notifications
+		// to the firmware.  A possible less tricky fix is to make a separate command for these
+		for(String line : source)
+		{
+			if( line.startsWith("(<layer>") )
+			{
+				int percentDone = (int)(index*100)/sourceSize;
+				if(percentDone == 0) percentDone = 1; 
+				if(percentDone == 100)	percentDone = 99; 
+				//^^See Footnote 1
+				newSource.add("M73 P"+percentDone+" (display progress)");
+			}
+			newSource.add(line);
+			index++;
+		}
+		source = newSource;
+	}
+	// Footnote 1: The only 'M37 100' that should happen is part of the end.gcode, since 
+	// 'M73 100' sends an s3g 'BUILD_DONE', and more than 1 'BUILD_DONE' message 
+	// causes problems for the firmware.
+    // the only M73 0 that happens should be part of the start gcode to specify the filename
+
 	
 	/// Scans gcode for layer start/ends. Adds gcode for approx % done 
 	/// by that layer via using line count
@@ -238,6 +267,7 @@ public class MutableGCodeSource implements GCodeSource {
 			if( line.startsWith("(<layer>") )
 			{
 				int percentDone = (int)(index*100)/sourceSize;
+				if(percentDone == 0)	percentDone = 1; 
 				if(percentDone == 100)	percentDone = 99; 
 				//^^See Footnote 1
 				newSource.add("M73 P"+percentDone+" (display progress)");
@@ -247,9 +277,6 @@ public class MutableGCodeSource implements GCodeSource {
 		}
 		source = newSource;
 	}
-	// Footnote 1: The only 'M37 100' that should happen is part of the end.gcode, since 
-	// 'M73 100' sends an s3g 'BUILD_DONE', and more than 1 'BUILD_DONE' message 
-	// causes problems for the firmware
 
 
 	
